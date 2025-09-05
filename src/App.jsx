@@ -17,12 +17,10 @@ function drawX(ctx, row, col, lineSpacing) {
   const y = row * lineSpacing;
   const padding = lineSpacing / 5;
   ctx.beginPath();
-  ctx.moveTo(x + padding*2.5, y + padding);
+  ctx.moveTo(x + padding, y + padding);
   ctx.lineTo(x + lineSpacing - padding, y + lineSpacing - padding);
-  ctx.moveTo(x + lineSpacing - padding, y + lineSpacing - padding);
+  ctx.moveTo(x + lineSpacing - padding, y + padding);
   ctx.lineTo(x + padding, y + lineSpacing - padding);
-  ctx.moveTo(x + padding, y + lineSpacing - padding);
-  ctx.lineTo(x + padding*2.5, y + padding);
   ctx.stroke();
 }
 
@@ -30,19 +28,12 @@ function drawX(ctx, row, col, lineSpacing) {
 function drawO(ctx, row, col, lineSpacing) {
   ctx.strokeStyle = 'black';
   ctx.lineWidth = 5;
-  const x = col * lineSpacing;
-  const y = row * lineSpacing;
+  const centerX = col * lineSpacing + lineSpacing / 2;
+  const centerY = row * lineSpacing + lineSpacing / 2;
   const padding = lineSpacing / 5;
-  const radius = lineSpacing / 2 - padding; 
+  const radius = lineSpacing / 2 - padding;
   ctx.beginPath();
-  ctx.moveTo(x + padding, y + padding);
-  ctx.lineTo(x + lineSpacing - padding, y + padding);
-  ctx.moveTo(x + lineSpacing - padding, y + padding);
-  ctx.lineTo(x + lineSpacing - padding, y + lineSpacing - padding);
-  ctx.moveTo(x + lineSpacing - padding, y + lineSpacing - padding);
-  ctx.lineTo(x + padding, y + lineSpacing - padding);
-  ctx.moveTo(x + padding, y + lineSpacing - padding);
-  ctx.lineTo(x + padding, y + padding);
+  ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
   ctx.stroke();
 }
 
@@ -129,7 +120,7 @@ function GameBoard() {
   const saveGame = () => {
     const gameState = {
       board: board,
-      turn: (winner) ? null : (turn % 2 === 1 ? '1' : '2'),
+      turn: (winner) ? null : (turn % 2 === 1 ? 'X' : 'O'),
       status: getJsonStatus(winner, turn, gridSize)
     };
     const jsonString = JSON.stringify(gameState, null, 2); // Use null, 2 for formatted JSON
@@ -171,9 +162,9 @@ function GameBoard() {
 
     board.forEach((row, rowIndex) => {
       row.forEach((cell, colIndex) => {
-        if (cell === '1') {
+        if (cell === 'X') {
           drawX(ctx, rowIndex, colIndex, lineSpacing);
-        } else if (cell === '2') {
+        } else if (cell === 'O') {
           drawO(ctx, rowIndex, colIndex, lineSpacing);
         }
       });
@@ -195,54 +186,53 @@ function GameBoard() {
   };
 
   // Handler for when a file is selected
-  // Handler for when a file is selected
   const handleFileChange = (event) => {
-   const file = event.target.files[0];
-      if (file) {
-          const reader = new FileReader();
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
 
-// This event fires when the file has been successfully read
-          reader.onload = (e) => {
-            const fileContent = e.target.result;
-            try {
-              // Parse the JSON string into a JavaScript object
-              const loadedGameState = JSON.parse(fileContent);
+      // This event fires when the file has been successfully read
+      reader.onload = (e) => {
+        const fileContent = e.target.result;
+        try {
+          // Parse the JSON string into a JavaScript object
+          const loadedGameState = JSON.parse(fileContent);
 
-              // We check if the loaded board has valid dimensions
-              if (!loadedGameState.board || loadedGameState.board.length !== loadedGameState.board[0].length) {
-              alert("Invalid board dimensions in the file.");
-              return;
-              }
+          // We check if the loaded board has valid dimensions
+          if (!loadedGameState.board || loadedGameState.board.length !== loadedGameState.board[0].length) {
+            alert("Invalid board dimensions in the file.");
+            return;
+          }
 
-              // A good practice is to normalize the loaded board state.
-              // In case the JSON file uses "" instead of null for empty cells.
-              const normalizedBoard = loadedGameState.board.map(row =>
-              row.map(cell => cell === "" ? null : cell)
-              );
+          // A good practice is to normalize the loaded board state.
+          // In case the JSON file uses "" instead of null for empty cells.
+          const normalizedBoard = loadedGameState.board.map(row => 
+            row.map(cell => cell === "" ? null : cell)
+          );
 
-              // Update all the state variables
-              setGridSize(normalizedBoard.length);
-              setBoard(normalizedBoard);
-              setTurn(loadedGameState.turn === '1' ? 1 : 2);
+          // Update all the state variables
+          setGridSize(normalizedBoard.length);
+          setBoard(normalizedBoard);
+          setTurn(loadedGameState.turn === 'X' ? 1 : 2);
 
-              // Recalculate the winner based on the new board
-              const newWinner = calculateWinner(normalizedBoard, normalizedBoard.length);
-              if (newWinner) {
-              setWinner(newWinner);
-              } else {
-              setWinner(null);
-              }
-              } catch (error) {
-              console.error("Failed to parse JSON:", error);
-              // In a real app, you would use a custom modal instead of alert
-              alert("Invalid game file. Please select a valid JSON file.");
-              }
-          };
+          // Recalculate the winner based on the new board
+          const newWinner = calculateWinner(normalizedBoard, normalizedBoard.length);
+          if (newWinner) {
+            setWinner(newWinner);
+          } else {
+            setWinner(null);
+          }
+        } catch (error) {
+          console.error("Failed to parse JSON:", error);
+          // In a real app, you would use a custom modal instead of alert
+          alert("Invalid game file. Please select a valid JSON file.");
+        }
+      };
 
-          // Start reading the file as text
-          reader.readAsText(file);
+      // Start reading the file as text
+      reader.readAsText(file);
     }
-};
+  };
 
   // Handler for a canvas click
   const handleCanvasClick = (event) => {
@@ -258,7 +248,7 @@ function GameBoard() {
 
     if (board[row][col]) return;
 
-    const currentPlayerSymbol = turn % 2 === 1 ? '1' : '2';
+    const currentPlayerSymbol = turn % 2 === 1 ? 'X' : 'O';
     const newBoard = board.map(arr => [...arr]);
     newBoard[row][col] = currentPlayerSymbol;
     setBoard(newBoard);
@@ -285,7 +275,7 @@ function GameBoard() {
   } else if (turn > gridSize * gridSize) {
     status = "It's a Draw!";
   } else {
-    status = `Turn ${turn}: Player ${turn % 2 === 1 ? '1' : '2'}`;
+    status = `Turn ${turn}: Player ${turn % 2 === 1 ? 'X' : 'O'}`;
   }
 
   // JSX to render the game UI
